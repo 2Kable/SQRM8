@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SQRM8
+GenericName=Claude Code desk companion
+Comment=Tray app for the SQRM8 desk screen: daemon, status and firmware updates
+Exec=sqrm8 app
+Icon=sqrm8
+Terminal=false
+Categories=Utility;
+Keywords=claude;companion;esp32;squaremate;
+StartupNotify=false
+X-AppImage-Version=@VERSION@

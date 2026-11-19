@@ -1,0 +1,33 @@
+.pio/
+# ESP-IDF (PlatformIO writes the resolved sdkconfig.<env> and the registry components into firmware/)
+firmware/sdkconfig.*
+!firmware/sdkconfig.defaults
+firmware/managed_components/
+.venv/
+__pycache__/
+backup/*.bin
+.devlock
+*.png
+!docs/**/*.png
+.devwant.*
+mocks/
+host/companion/firmware/*/
+# packaging (PyInstaller / setuptools output); the generated app icons are committed
+build/
+dist/
+*.egg-info/
+!packaging/icons/*.png
+!firmware/assets/sprites/*.png
+# generated from firmware/assets/sprites by the pre-build hook (tools/sprites_prebuild.py)
+firmware/src/screens/room/sprites_gen.*
+
+# KiCad per-user / backup files
+*.kicad_prl
+*-backups/
+hardware/pcb/fp-info-cache
+
+# private: sourcing, pricing, manufacturing, research trail
+work/
+hardware/pcb/fab/
+.history/
+*.lck
