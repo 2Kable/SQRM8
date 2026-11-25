@@ -4,6 +4,7 @@
 #include "../screens/screens.h"
 #include "../fx/alerts.h"
 #include "../fx/ambient.h"
+#include "../fx/setup_qr.h"
 #include "../core/hal.h"
 #include "../screens/home_face.h"
 
@@ -88,6 +89,7 @@ void ui_tick() {
     ambient_update(s);
   }
   ambient_tick();
+  setup_qr_tick();
 }
 
 void ui_nav(const char *id) {

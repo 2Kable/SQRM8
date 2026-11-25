@@ -22,6 +22,7 @@ firmware/                    PlatformIO + ESP-IDF 5.5 (no Arduino core), LVGL 8.
   src/screens/*.cpp          one file per screen (owners below)
   src/fx/alerts.cpp          attention overlay on lv_layer_top()
   src/fx/ambient.cpp         auto-dim / screensaver / night clock
+  src/fx/setup_qr.cpp        "get the app" QR code until the first state of a boot
 host/companion/              Python 3.15 daemon (venv: host/.venv, has pyserial)
   daemon.py link.py          main loop & serial
   providers/*.py             data providers (sessions, usage, hooks, demo)

@@ -11,7 +11,7 @@ firmware/                   PlatformIO + ESP-IDF 5.5 (no Arduino core), LVGL 8.4
   src/ui/                   tile manager, theme (palette, fonts, status colours)
   src/screens/              one file per screen; room/ = M8's Studio (the home screen's pixel-art room and its
                               behaviour director, portable C++: tools/room_sim.py renders it on the host)
-  src/fx/                   alerts overlay, auto-dim / screensaver / night clock
+  src/fx/                   alerts overlay, auto-dim / screensaver / night clock, the "get the app" QR code
   assets/sprites/           the room's sprite sheets (indexed PNGs + atlas.json), the masters of its pixel art
 host/companion/             Python daemon, data providers, tray app (app.py, tray/), flasher, hooks client/installer
 host/hooks/                 Claude Code hook + statusLine wrapper scripts (thin shims over companion/)
