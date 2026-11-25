@@ -35,6 +35,8 @@ Swipe between screens. Tap a session to open its detail view.
 When a session is blocked on a permission prompt or a question, an amber glow lights the edges of the screen and a
 "needs you" card appears over whatever you are looking at. When a session finishes, a small celebration plays.
 After a few minutes of inactivity the screen dims, then turns into a night clock.
+A device that is powered up and hears nothing from the app shows a QR code to this page; once the app has talked
+to it, it keeps its usual screens until the next power-up, even while the computer is off.
 
 <p align="center">
   <img src="docs/img/screens-1.png" width="900" alt="Home, Agents and Usage screens">

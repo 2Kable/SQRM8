@@ -662,7 +662,7 @@
 #define LV_USE_GIF 0
 
 /*QR code library*/
-#define LV_USE_QRCODE 0
+#define LV_USE_QRCODE 1   /*fx/setup_qr.cpp: the "get the app" code of a device no host has talked to*/
 
 /*FreeType library*/
 #define LV_USE_FREETYPE 0
