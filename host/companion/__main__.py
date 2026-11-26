@@ -345,8 +345,7 @@ def cmd_hooks(action: str, statusline: bool, agent: str = "auto") -> int:
     from . import hooksetup
     try:
         if action == "install":
-            res = hooksetup.install_agents(agent, statusline)
-            return max(res.values()) if res else 0
+            return hooksetup.exit_code(hooksetup.install_agents(agent, statusline), agent)
         if action == "uninstall":
             res = hooksetup.uninstall_agents(agent if agent != "auto" else "all")
             return max(res.values()) if res else 0
@@ -354,12 +353,11 @@ def cmd_hooks(action: str, statusline: bool, agent: str = "auto") -> int:
         print(f"error: cannot update hooks config: {e}", file=sys.stderr)
         return 2
     targets = hooksetup.resolve_agents(agent)
-    rcs = []
+    rcs = {}
     if "claude" in targets:
-        rc = hooksetup.check()
-        rcs.append(rc)
+        rcs["claude"] = hooksetup.check()
         inst = hooksetup.installed()
-        print(f"claude hooks   : {'installed' if inst['hooks'] else 'not installed'}, "
+        print(f"hooks: {'installed' if inst['hooks'] else 'not installed'}, "
               f"statusLine wrapper: {'installed' if inst['statusline'] else 'not installed'} "
               f"({hooksetup.settings_path()})")
         for c in inst["commands"]:
@@ -368,14 +366,13 @@ def cmd_hooks(action: str, statusline: bool, agent: str = "auto") -> int:
             print("needs reinstall: some entries still run the app under its old name (Claudius Maximus); "
                   "run `sqrm8 hooks install`")
     if "antigravity" in targets:
-        rc = hooksetup.antigravity_check()
-        rcs.append(rc)
+        rcs["antigravity"] = hooksetup.antigravity_check()
         inst = hooksetup.antigravity_installed()
-        print(f"antigravity    : {'installed' if inst['hooks'] else 'not installed'} "
+        print(f"antigravity hooks: {'installed' if inst['hooks'] else 'not installed'} "
               f"({hooksetup.antigravity_hooks_path()})")
         for c in inst["commands"]:
             print(f"  {c}")
-    return 0 if all(r == 0 for r in rcs) else max(rcs or [1])
+    return hooksetup.exit_code(rcs, agent)
 
 
 def build_parser():

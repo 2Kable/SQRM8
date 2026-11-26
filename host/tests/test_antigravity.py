@@ -419,7 +419,8 @@ class AntigravityHooksTests(TempEnv):
             self.assertEqual(s["activity"]["detail"], "git status")
             self.assertEqual(s["last_prompt"], "Hello")
             kinds = [e["kind"] for e in hp.drain_events()]
-            self.assertEqual(kinds, ["session_start", "prompt", "tool", "stop"])
+            # no "tool" from the hook: the transcript provider emits it (two sources would show it twice)
+            self.assertEqual(kinds, ["session_start", "prompt", "stop"])
         finally:
             hp.close()
 
@@ -489,6 +490,92 @@ class TrayAndFocusTests(TempEnv):
             res = runtime_focus.focus_session(CID[:8], info={"source": "antigravity", "surface": "app", "cwd": CWD})
             self.assertEqual(res, "focused Antigravity")
             m.assert_called_once_with(CID[:8], CWD)
+
+
+# ---------------------------------------------------------------------------------------------
+class ClaudeOnlyUnchangedTests(TempEnv):
+    """What a Claude-Code-only user had before the other agents came: none of it may move."""
+
+    def test_claude_tool_names_are_not_renamed(self):
+        for name in ("Task", "MultiEdit", "TodoRead", "Read", "Bash", "List", "Patch", "Question",
+                     "mcp__srv__do_thing"):
+            self.assertEqual(normalize_tool(name), name, name)
+
+    def test_gemini_cli_directory_is_not_antigravity(self):
+        os.makedirs(os.path.join(self.home, ".gemini"))
+        with open(os.path.join(self.home, ".gemini", "settings.json"), "w") as f:
+            f.write("{}")
+        with mock.patch.object(hooksetup.shutil, "which", return_value=None):
+            self.assertFalse(hooksetup.antigravity_detected())
+            self.assertEqual(hooksetup.resolve_agents("auto"), ["claude"])
+            os.makedirs(self.agy_cli)
+            self.assertTrue(hooksetup.antigravity_detected())
+            self.assertEqual(hooksetup.resolve_agents("auto"), ["claude", "antigravity"])
+
+    def test_auto_always_includes_claude(self):
+        os.makedirs(self.agy_cli)      # Antigravity only: no ~/.claude, no claude on the PATH
+        with mock.patch.object(hooksetup.shutil, "which", return_value=None):
+            self.assertFalse(hooksetup.claude_detected())
+            self.assertEqual(hooksetup.resolve_agents("auto"), ["claude", "antigravity"])
+
+    def test_broken_antigravity_hooks_file_does_not_fail_an_auto_install(self):
+        os.makedirs(self.agy_cli)
+        os.makedirs(self.gemini_cfg)
+        with open(os.path.join(self.gemini_cfg, "hooks.json"), "w") as f:
+            f.write("{ // jsonc\n not json")
+        with mock.patch.object(hooksetup.shutil, "which", return_value=None), \
+                mock.patch.object(hooksetup, "install_for_app", return_value=0), \
+                mock.patch("sys.stderr"), mock.patch("sys.stdout"):
+            res = hooksetup.install_agents("auto")
+        self.assertEqual(res["claude"], 0)
+        self.assertNotEqual(res["antigravity"], 0)
+        self.assertEqual(hooksetup.exit_code(res, "auto"), 0)
+        self.assertNotEqual(hooksetup.exit_code(res, "all"), 0)
+        with open(os.path.join(self.gemini_cfg, "hooks.json")) as f:
+            self.assertEqual(f.read(), "{ // jsonc\n not json")       # left as it was
+
+    def test_bad_antigravity_line_does_not_stall_usage(self):
+        now = time.time()
+        cc_tr = os.path.join(self.claude, "projects", cwd_slug(CWD), CC_SID + ".jsonl")
+        write_jsonl(cc_tr, {"type": "assistant", "message": {
+            "id": "m1", "model": "claude-opus-5-5", "role": "assistant", "content": [],
+            "usage": {"input_tokens": 500, "output_tokens": 100, "cache_read_input_tokens": 0,
+                      "cache_creation_input_tokens": 0}}, "timestamp": iso(now - 30), "sessionId": CC_SID})
+        os.utime(cc_tr, (now - 30, now - 30))
+        agy_tr = os.path.join(self.agy_cli, "brain", CID, ".system_generated", "logs", "transcript.jsonl")
+        bad = agy_planner(now - 3, step=1)
+        bad["input_tokens"] = "n/a"
+        notstr = agy_planner(now - 3, step=2)
+        notstr["model"] = {"name": "gemini"}
+        write_jsonl(agy_tr, bad, notstr)
+        with open(agy_tr, "a") as f:
+            f.write('["PLANNER_RESPONSE"]\n')
+        write_jsonl(agy_tr, agy_planner(now - 2, step=3, inp=1000, out=250, cr=400))   # newest file: read first
+        up = UsageProvider(projects_glob=os.path.join(self.claude, "projects", "**", "*.jsonl"),
+                           antigravity_dirs=[self.agy_cli])
+        for _ in range(3):
+            up.poll(now)
+        state = {}
+        up.contribute(state)
+        self.assertEqual(state["usage"]["today"]["tokens"], 600 + 1250)
+        self.assertEqual(up.queue, [])
+
+    def test_process_matching_keeps_claude_case_sensitive(self):
+        from companion.providers import system as sysmod
+        sp = sysmod.SystemProvider.__new__(sysmod.SystemProvider)
+        sp.node_is_claude = {}
+        cmds = {1: ["node", "/Users/u/Library/Application Support/Claude/mcp/server.js"],
+                2: ["node", "/usr/lib/node_modules/@anthropic-ai/claude-code/cli.js"],
+                3: ["node", "/home/u/work/opencode-notes/build.js"]}
+        fake = mock.Mock()
+        fake.Process.side_effect = lambda pid: mock.Mock(cmdline=lambda: cmds[pid])
+        with mock.patch.object(sysmod, "psutil", fake):
+            self.assertTrue(sp._is_agent_proc(10, "claude"))
+            self.assertFalse(sp._is_agent_proc(11, "Claude"))      # the desktop app on macOS
+            self.assertFalse(sp._is_agent_proc(1, "node"))
+            self.assertTrue(sp._is_agent_proc(2, "node"))
+            self.assertFalse(sp._is_agent_proc(3, "node"))
+            self.assertTrue(sp._is_agent_proc(12, "agy"))
 
 
 if __name__ == "__main__":

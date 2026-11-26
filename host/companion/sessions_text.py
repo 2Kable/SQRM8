@@ -192,12 +192,10 @@ def normalize_tool(name: str) -> str:
     """Map an agent-native tool name (Antigravity, OpenCode, etc.) to SQRM8's canonical tool name."""
     if not name:
         return ""
-    if name in TOOL_ALIASES:
-        return TOOL_ALIASES[name]
-    low = name.lower()
-    if low in TOOL_ALIASES:
-        return TOOL_ALIASES[low]
-    return name
+    # Exact match only: the aliases are the other agents' own lower-case names. A case-insensitive lookup would
+    # rename Claude Code's tools on the way ("Task" -> "Agent", "MultiEdit" -> "Edit") and capture a user's
+    # own tool that happens to be called "List" or "Question".
+    return TOOL_ALIASES.get(name, name)
 
 
 def tool_label(name: str) -> str:

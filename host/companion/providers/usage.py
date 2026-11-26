@@ -262,26 +262,28 @@ class UsageProvider(Provider):
         for line in block.split(b"\n"):
             if b'"PLANNER_RESPONSE"' not in line:
                 continue
+            # Per line, and for any error: an exception here would leave poll() before the offset advances, so
+            # the file would stay at the head of the queue and block every older one (Claude's included).
             try:
                 d = json.loads(line)
+                if not isinstance(d, dict) or d.get("type") != "PLANNER_RESPONSE":
+                    continue
+                model = d.get("model") or ""
+                if not isinstance(model, str) or not model or model.startswith("<"):
+                    continue
+                i = int(d.get("input_tokens") or 0)
+                o = int(d.get("output_tokens") or 0)
+                cr = int(d.get("cache_read_tokens") or 0)
+                if not (i or o or cr):
+                    continue
+                ts = parse_ts(d.get("created_at") or d.get("timestamp"))
+                if not ts:
+                    continue
+                step = d.get("step_index")
+                mid = f"agy:{path}:{step if step is not None else ts}"
+                self._add(mid, model, {"input_tokens": i, "output_tokens": o, "cache_read_input_tokens": cr}, ts)
             except Exception:
                 continue
-            if d.get("type") != "PLANNER_RESPONSE":
-                continue
-            model = d.get("model") or ""
-            if not model or model.startswith("<"):
-                continue
-            i = int(d.get("input_tokens") or 0)
-            o = int(d.get("output_tokens") or 0)
-            cr = int(d.get("cache_read_tokens") or 0)
-            if not (i or o or cr):
-                continue
-            ts = parse_ts(d.get("created_at") or d.get("timestamp"))
-            if not ts:
-                continue
-            step = d.get("step_index")
-            mid = f"agy:{path}:{step if step is not None else ts}"
-            self._add(mid, model, {"input_tokens": i, "output_tokens": o, "cache_read_input_tokens": cr}, ts)
 
     def _parse_block(self, block: bytes):
         for line in block.split(b"\n"):

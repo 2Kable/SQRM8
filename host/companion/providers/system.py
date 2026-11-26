@@ -363,21 +363,22 @@ class SystemProvider(Provider):
 
     def _is_agent_proc(self, pid: int, base: str) -> bool:
         """True for Claude Code, Antigravity (agy / language_server), and OpenCode root processes."""
-        low = base.lower()
-        if low in ("claude", "agy", "antigravity", "opencode"):
+        # The Claude Code tests stay case-sensitive, as they were: "Claude" is the desktop app on macOS, and a
+        # node process under ".../Application Support/Claude/" is one of its MCP servers, not a session.
+        if base == "claude":
             return True
-        if low == "node" or low.startswith("language_server"):
+        low = base.lower()
+        if low in ("agy", "antigravity", "opencode"):
+            return True
+        if base == "node" or low.startswith("language_server"):
             if pid not in self.node_is_claude:
                 try:
-                    cmd = " ".join(psutil.Process(pid).cmdline()).lower()
-                    if low == "node":
-                        self.node_is_claude[pid] = (
-                            ("claude" in cmd and ("claude-code" in cmd or "/claude" in cmd
-                                                  or (IS_WINDOWS and "\\claude" in cmd)))
-                            or "opencode" in cmd
-                        )
+                    cmd = " ".join(psutil.Process(pid).cmdline())
+                    if base == "node":
+                        self.node_is_claude[pid] = "claude" in cmd.lower() and (
+                            "claude-code" in cmd or "/claude" in cmd or (IS_WINDOWS and "\\claude" in cmd))
                     else:
-                        self.node_is_claude[pid] = "antigravity" in cmd
+                        self.node_is_claude[pid] = "antigravity" in cmd.lower()
                 except Exception:
                     self.node_is_claude[pid] = False
             return self.node_is_claude[pid]

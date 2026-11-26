@@ -474,11 +474,11 @@ class HooksProvider(Provider):
                 act = {"tool": tool_label(tool), "detail": detail, "ts": int(ts)}
                 if not aid:
                     s["activity"] = act
+                # No "tool" event from here: the agent's transcript provider already emits one per call (with a
+                # different text, so the dedupe would let both through). Errors are a hook-covered kind.
                 if m.get("err"):
                     self._event("tool_error", s, ts, tool=tool_label(tool), text=_short(m.get("err") or "", 80),
                                 agent=aid)
-                elif tool not in QUIET_TOOLS:
-                    self._event("tool", s, ts, tool=tool_label(tool), text=detail, agent=aid)
         elif ev == "PostToolUseFailure":
             if m.get("intr"):
                 self._set_status(s, "idle", ts)  # user interrupted: no Stop hook will follow

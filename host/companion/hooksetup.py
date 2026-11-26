@@ -108,13 +108,11 @@ def claude_detected() -> bool:
 
 
 def antigravity_detected() -> bool:
-    if os.environ.get("GEMINI_CONFIG_DIR") and os.path.isdir(os.environ["GEMINI_CONFIG_DIR"]):
+    """One of Antigravity's own data directories, or `agy` on the PATH. ~/.gemini alone is not enough: it is
+    the Gemini CLI's directory too, and "detected" is what lets an install write a hooks.json there."""
+    from .hostos import antigravity_dirs
+    if any(os.path.isdir(d) for _, d in antigravity_dirs()):
         return True
-    if os.path.isdir(os.path.join(home(), ".gemini")):
-        return True
-    for k in ("ANTIGRAVITY_CLI_DIR", "ANTIGRAVITY_APP_DIR", "ANTIGRAVITY_IDE_DIR"):
-        if os.environ.get(k) and os.path.isdir(os.environ[k]):
-            return True
     return bool(shutil.which("agy"))
 
 
@@ -551,8 +549,8 @@ def resolve_agents(agent: str = "auto") -> list[str]:
         return ["claude", "antigravity"]
     if a in ("claude", "antigravity"):
         return [a]
-    found = detected_agents()
-    return found or ["claude"]
+    # auto: Claude Code always (what `hooks install` did before there were other agents), the others when found
+    return ["claude"] + [x for x in detected_agents() if x != "claude"]
 
 
 def install_agents(agent: str = "auto", statusline: bool = True, root: str | None = None,
@@ -563,9 +561,23 @@ def install_agents(agent: str = "auto", statusline: bool = True, root: str | Non
             results["claude"] = (install(root, python, statusline) if (root and python)
                                  else install_for_app(statusline))
         elif target == "antigravity":
-            results["antigravity"] = (install_antigravity_script(root, python) if (root and python)
-                                      else install_antigravity_for_app())
+            try:
+                results["antigravity"] = (install_antigravity_script(root, python) if (root and python)
+                                          else install_antigravity_for_app())
+            except (ValueError, OSError) as e:
+                # its own file, its own failure: the Claude Code result above must survive it
+                print(f"error: cannot update {antigravity_hooks_path()}: {e}", file=sys.stderr)
+                results["antigravity"] = 2
     return results
+
+
+def exit_code(results: dict[str, int], agent: str = "auto") -> int:
+    """The process exit code for a set of per-agent results. In auto mode only Claude Code decides it: an
+    optional agent that was merely detected must not fail an installer (tools/install.sh runs under `set -e`)
+    or turn `hooks check` red for someone who never asked for it."""
+    if (agent or "auto").strip().lower() == "auto" and "claude" in results:
+        return results["claude"]
+    return max(results.values()) if results else 0
 
 
 def uninstall_agents(agent: str = "all") -> dict[str, int]:
