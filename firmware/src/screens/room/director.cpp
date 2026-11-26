@@ -527,10 +527,13 @@ void Director::stepMoira() {
   if (--moira.blinkT <= 0) { moira.blinkLen = 2; moira.blinkT = S(rng.range(2, 6)); }
   if (moira.blinkLen > 0) moira.blinkLen--;
 
-  bool beingPetted = (fid == ERR_PET && errPhase == 1 && moira.spot == 0 && moira.state != MOIRA_WALK);
+  // She stays in her bed from the moment M8 sets off to pet her (errPhase 0 is his walk there), or he would
+  // arrive at an empty bed; she only wakes up once he is beside her.
+  bool petComing = (fid == ERR_PET && errPhase <= 1 && moira.spot == 0 && moira.state != MOIRA_WALK);
+  bool beingPetted = petComing && errPhase == 1;
   moira.petted = beingPetted;
-  if (beingPetted) {
-    if (moira.state == MOIRA_SLEEP) moira.state = MOIRA_BED_AWAKE;
+  if (petComing) {
+    if (beingPetted && moira.state == MOIRA_SLEEP) moira.state = MOIRA_BED_AWAKE;
     if (moira.timer < S(2)) moira.timer = S(2);
     return;
   }

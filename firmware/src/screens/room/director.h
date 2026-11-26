@@ -45,7 +45,7 @@ struct Director {
   int headX() const { return cx + 9; }  // logical coords of M8's head (speech bubble anchor)
   int headY() const { return inBed ? 64 : cy; }
   bool m8Visible() const { return !inBed; }
-  const char *activity() const;         // "code", "walk>desk", "fidget:sip", "errand:water", "react:happy", ...
+  const char *activity() const;         // "code", "walk>desk", "fidget:sip", "errand:pet", "react:happy", ...
   // Debug: force a task by name ("" releases): code web review read run search think delegate plan idle wait sleep offline
   bool force(const char *name);
   const char *forcedName() const { return forced ? TASK_NAMES[task] : ""; }
